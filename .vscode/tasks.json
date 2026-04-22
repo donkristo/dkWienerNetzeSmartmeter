@@ -2,27 +2,47 @@
     "version": "2.0.0",
     "tasks": [
         {
-            "label": "Run Home Assistant on port 9123",
+            "label": "Create virtual environment",
             "type": "shell",
-            "command": "container start",
+            "command": "python3.11 -m venv .venv",
             "problemMatcher": []
         },
         {
-            "label": "Run Home Assistant configuration against /config",
+            "label": "Install test dependencies",
             "type": "shell",
-            "command": "container check",
+            "command": "${workspaceFolder}/.venv/bin/python -m pip install --upgrade pip && ${workspaceFolder}/.venv/bin/python -m pip install -r tests/requirements.txt",
             "problemMatcher": []
         },
         {
-            "label": "Upgrade Home Assistant to latest dev",
+            "label": "Install developer tools",
             "type": "shell",
-            "command": "container install",
+            "command": "${workspaceFolder}/.venv/bin/python -m pip install -r .vscode/requirements.dev.txt",
             "problemMatcher": []
         },
         {
-            "label": "Install a specific version of Home Assistant",
+            "label": "Run tests",
             "type": "shell",
-            "command": "container set-version",
+            "command": "${workspaceFolder}/.venv/bin/python -m pytest",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Run importer tests without coverage",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python -m pytest -o addopts= tests/test_importer.py",
+            "group": "test",
+            "problemMatcher": []
+        },
+        {
+            "label": "Lint integration",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/bin/python -m flake8 custom_components/wnsm --config tests/setup.cfg",
+            "problemMatcher": []
+        },
+        {
+            "label": "Compile integration modules",
+            "type": "shell",
+            "command": "PYTHONPYCACHEPREFIX=/tmp/wnsm_pycache ${workspaceFolder}/.venv/bin/python -m py_compile custom_components/wnsm/importer.py custom_components/wnsm/wnsm_sensor.py custom_components/wnsm/sensor.py custom_components/wnsm/config_flow.py custom_components/wnsm/AsyncSmartmeter.py",
             "problemMatcher": []
         }
     ]

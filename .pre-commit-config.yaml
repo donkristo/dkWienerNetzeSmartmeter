@@ -1,19 +1,19 @@
 repos:
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.3.0
+    rev: v3.15.0
     hooks:
       - id: pyupgrade
-        args: [--py37-plus]
+        args: [--py311-plus]
   - repo: https://github.com/psf/black
-    rev: 19.10b0
+    rev: 24.4.2
     hooks:
       - id: black
         args:
           - --safe
           - --quiet
-        files: ^((homeassistant|script|tests)/.+)?[^/]+\.py$
+        files: ^(custom_components|manage|tests|utils)/.+\.py$
   - repo: https://github.com/codespell-project/codespell
-    rev: v1.16.0
+    rev: v2.3.0
     hooks:
       - id: codespell
         args:
@@ -21,35 +21,35 @@ repos:
           - --skip="./.*,*.csv,*.json"
           - --quiet-level=2
         exclude_types: [csv, json]
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.8.1
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.1.0
     hooks:
       - id: flake8
         additional_dependencies:
-          - flake8-docstrings==1.5.0
-          - pydocstyle==5.0.2
-        files: ^(homeassistant|script|tests)/.+\.py$
+          - flake8-docstrings==1.7.0
+          - pydocstyle==6.3.0
+        files: ^(custom_components|manage|tests|utils)/.+\.py$
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.6.2
+    rev: 1.7.9
     hooks:
       - id: bandit
         args:
           - --quiet
           - --format=custom
           - --configfile=tests/bandit.yaml
-        files: ^(homeassistant|script|tests)/.+\.py$
-  - repo: https://github.com/pre-commit/mirrors-isort
-    rev: v4.3.21
+        files: ^(custom_components|manage|tests|utils)/.+\.py$
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
     hooks:
       - id: isort
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.4.0
+    rev: v4.6.0
     hooks:
       - id: check-executables-have-shebangs
         stages: [manual]
       - id: check-json
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v0.770
+    rev: v1.10.0
     hooks:
       - id: mypy
         args:

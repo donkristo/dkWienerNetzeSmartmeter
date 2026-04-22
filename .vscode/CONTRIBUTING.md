@@ -1,75 +1,57 @@
 ## Developer Support
 
-All contributions are welcome! The easiest way to get started with custom integration development is to use Visual Studio Code with devcontainers. This approach will create a preconfigured development environment with all the tools you need.
-
-In the container you will have a dedicated Home Assistant core instance running with your custom component code. You can configure this instance by updating the `./devcontainer/configuration.yaml` file.
+This fork is set up for local Home Assistant integration development from a macOS checkout, without a devcontainer.
 
 ### Prerequisites
 
-* [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-* Docker
-    * For Linux, macOS, or Windows 10 Pro/Enterprise/Education use the [current release version of Docker](https://docs.docker.com/install/)
-    * Windows 10 Home requires [WSL 2](https://docs.microsoft.com/windows/wsl/wsl2-install) and the current Edge version of Docker Desktop (see instructions [here](https://docs.docker.com/docker-for-windows/wsl-tech-preview/)). This can also be used for Windows Pro/Enterprise/Education.
-* [Visual Studio code](https://code.visualstudio.com/)
-* [Remote - Containers (VSC Extension)][extension-link]
+- Git
+- Visual Studio Code
+- Homebrew Python 3.11: `brew install python@3.11`
+- A Home Assistant test instance where this custom component can be installed or symlinked
 
-[More info about requirements and devcontainer in general](https://code.visualstudio.com/docs/remote/containers#_getting-started)
+The checked-in VS Code settings expect a virtual environment at `.venv`.
 
-[extension-link]: https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers
+### Local Setup
 
-### Setup
+From VS Code, run these tasks in order:
 
-Please use following tools/extensions to contribute (feedback and suggestions very much welcome :) ):
+1. `Create virtual environment`
+2. `Install test dependencies`
+3. Optional: `Install developer tools`
+4. `Run tests` or `Run importer tests without coverage`
 
-`requirements.dev.txt`
-* [black formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter)
-    * [black](https://github.com/psf/black)
-* [pylint extension](https://marketplace.visualstudio.com/items?itemName=ms-python.pylint)
-    * [pylint](https://github.com/PyCQA/pylint)
+Equivalent terminal commands:
 
-### Getting started
-
-1. Install prerequisites
-
-2. Fork the repository.
-
-3. Clone the repository to your computer.
-
-4. Open the repository using Visual Studio code.
-
-When you open this repository with Visual Studio code you are asked to "Reopen in Container", this will start the build of the container.
-
-_If you don't see this notification, open the command palette and select `Remote-Containers: Reopen Folder in Container`._
-
-### Tasks
-
-The devcontainer comes with some useful tasks to help you with development, you can start these tasks by opening the command palette and select `Tasks: Run Task` then select the task you want to run.
-
-When a task is currently running (like `Run Home Assistant on port 9123` for the docs), it can be restarted by opening the command palette and selecting `Tasks: Restart Running Task`, then select the task you want to restart.
-
-The available tasks are:
-
-| Task                                             | Description                                                                                                                |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
-| Run Home Assistant on port 9123                  | Launch Home Assistant with your custom component code and the configuration defined in `.devcontainer/configuration.yaml`. |
-| Run Home Assistant configuration against /config | Check the configuration.                                                                                                   |
-| Upgrade Home Assistant to latest dev             | Upgrade the Home Assistant core version in the container to the latest version of the `dev` branch.                        |
-| Install a specific version of Home Assistant     | Install a specific version of Home Assistant core in the container.                                                        |
-
-
-### Step by Step debugging
-
-With the development container,
-you can test your custom component in Home Assistant with step by step debugging.
-
-You need to modify the `configuration.yaml` file in `.devcontainer` folder
-by uncommenting the line:
-
-```yaml
-# debugpy:
+```bash
+python3.11 -m venv .venv
+.venv/bin/python -m pip install --upgrade pip
+.venv/bin/python -m pip install -r tests/requirements.txt
+.venv/bin/python -m pip install -r .vscode/requirements.dev.txt
+.venv/bin/python -m pytest
 ```
 
-Then launch the task `Run Home Assistant on port 9123`, and launch the debugger
-with the existing debugging configuration `Python: Attach Local`.
+If macOS blocks Python bytecode writes under `~/Library/Caches`, keep `PYTHONPYCACHEPREFIX=/tmp/wnsm_pycache`; the workspace already sets this for integrated terminals and compile tasks.
 
-For more information, look at [the Remote Python Debugger integration documentation](https://www.home-assistant.io/integrations/debugpy/).
+### Useful Tasks
+
+| Task | Description |
+| --- | --- |
+| Create virtual environment | Creates `.venv` with Python 3.11. |
+| Install test dependencies | Installs the pinned test and Home Assistant dependencies. |
+| Install developer tools | Installs local formatter, linter, and pre-commit tooling. |
+| Run tests | Runs the repository pytest suite with the project pytest config. |
+| Run importer tests without coverage | Fast smoke test for importer helper behavior. |
+| Lint integration | Runs flake8 against `custom_components/wnsm`. |
+| Compile integration modules | Checks syntax for the main integration modules without writing cache into the repo. |
+
+### Home Assistant Debugging
+
+For step-by-step debugging inside Home Assistant, enable the `debugpy` integration in your Home Assistant test config and expose port `5678`. Then use the VS Code launch configuration `Attach Home Assistant custom component`.
+
+The path mapping assumes the integration is installed at:
+
+```text
+/config/custom_components/wnsm
+```
+
+If your Home Assistant config path differs, update the `remoteRoot` in `.vscode/launch.json`.
