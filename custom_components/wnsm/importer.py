@@ -149,7 +149,7 @@ class Importer:
     @staticmethod
     def _unit_factor(bewegungsdaten: dict) -> float:
         unit = bewegungsdaten.get("unitOfMeasurement")
-        if unit is None:
+        if not unit:
             _LOGGER.warning("WienerNetze did not report a unit for bewegungsdaten; assuming KWH.")
             unit = "KWH"
 
@@ -174,6 +174,10 @@ class Importer:
                 return value[key]
         return None
 
+    @staticmethod
+    def _statistic_hour_start(ts: datetime) -> datetime:
+        return ts.replace(minute=0, second=0, microsecond=0)
+
     async def _import_statistics(self, start: datetime = None, end: datetime = None, total_usage: Decimal = Decimal(0)):
         """Import statistics"""
 
@@ -186,7 +190,7 @@ class Importer:
         _LOGGER.debug("Querying WienerNetze bewegungsdaten for %s from %s to %s with granularity %s", self.zaehlpunkt, start, end, self.granularity)
         if start > end:
             _LOGGER.warning(f"Ignoring async update since last import happened in the future (should not happen) {start} > {end}")
-            return
+            return total_usage
 
         bewegungsdaten = await self.async_smartmeter.get_bewegungsdaten(self.zaehlpunkt, start, end, self.granularity)
         _LOGGER.debug(f"Mapped historical data: {bewegungsdaten}")
@@ -221,7 +225,7 @@ class Importer:
             reading = Decimal(str(raw_value)) * Decimal(str(factor))
             if ts.minute % 15 != 0 or ts.second != 0 or ts.microsecond != 0:
                 _LOGGER.warning(f"Unexpected time detected in historic data: {value}")
-            dates[ts.replace(minute=0)] += reading
+            dates[self._statistic_hour_start(ts)] += reading
             if value.get('geschaetzt', value.get('isEstimated', False)):
                 _LOGGER.debug(f"Not seen that before: Estimated Value found for {ts}: {reading}")
 

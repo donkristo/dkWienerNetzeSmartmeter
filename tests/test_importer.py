@@ -1,16 +1,18 @@
 """Tests for the statistics importer."""
 import logging
+from datetime import datetime, timezone
 
 import pytest
 
 from custom_components.wnsm.importer import Importer
 
 
-def test_unit_factor_defaults_missing_unit_to_kwh(caplog):
+@pytest.mark.parametrize("bewegungsdaten", [{}, {"unitOfMeasurement": ""}])
+def test_unit_factor_defaults_missing_unit_to_kwh(bewegungsdaten, caplog):
     """Missing bewegungsdaten unit metadata should not crash import."""
     caplog.set_level(logging.WARNING)
 
-    assert Importer._unit_factor({}) == 1.0
+    assert Importer._unit_factor(bewegungsdaten) == 1.0
     assert "assuming KWH" in caplog.text
 
 
@@ -57,3 +59,10 @@ def test_reading_value_accepts_known_api_shapes(value, expected):
 def test_reading_timestamp_accepts_known_api_shapes(value, expected):
     """Timestamps can come from old or current API field names."""
     assert Importer._reading_timestamp(value) == expected
+
+
+def test_statistic_hour_start_clears_sub_hour_fields():
+    """Statistics rows are stored on clean hourly boundaries."""
+    ts = datetime(2026, 4, 17, 12, 45, 30, 123456, tzinfo=timezone.utc)
+
+    assert Importer._statistic_hour_start(ts) == datetime(2026, 4, 17, 12, tzinfo=timezone.utc)

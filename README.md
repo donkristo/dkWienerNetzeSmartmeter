@@ -1,11 +1,11 @@
 # Wiener Netze Smartmeter Integration for Home Assistant
 
-[![codecov](https://codecov.io/gh/DarwinsBuddy/WienerNetzeSmartmeter/branch/main/graph/badge.svg?token=ACYNOG1WFW)](https://codecov.io/gh/DarwinsBuddy/WienerNetzeSmartmeter)
-![Tests](https://github.com/DarwinsBuddy/WienerNetzeSmartMeter/actions/workflows/test.yml/badge.svg)
+[![codecov](https://codecov.io/gh/donkristo/dkWienerNetzeSmartmeter/branch/main/graph/badge.svg)](https://codecov.io/gh/donkristo/dkWienerNetzeSmartmeter)
+![Tests](https://github.com/donkristo/dkWienerNetzeSmartmeter/actions/workflows/test.yml/badge.svg)
 
-![Hassfest](https://github.com/DarwinsBuddy/WienerNetzeSmartMeter/actions/workflows/hassfest.yml/badge.svg)
-![Validate](https://github.com/DarwinsBuddy/WienerNetzeSmartMeter/actions/workflows/validate.yml/badge.svg)
-![Release](https://github.com/DarwinsBuddy/WienerNetzeSmartMeter/actions/workflows/release.yml/badge.svg)
+![Hassfest](https://github.com/donkristo/dkWienerNetzeSmartmeter/actions/workflows/hassfest.yml/badge.svg)
+![Validate](https://github.com/donkristo/dkWienerNetzeSmartmeter/actions/workflows/validate.yml/badge.svg)
+![Release](https://github.com/donkristo/dkWienerNetzeSmartmeter/actions/workflows/release.yml/badge.svg)
 
 ## About 
 
@@ -13,7 +13,7 @@ This repo contains a custom component for [Home Assistant](https://www.home-assi
 providing information about a registered [WienerNetze Smartmeter](https://www.wienernetze.at/smartmeter).
 
 ## FAQs
-[FAQs](https://github.com/DarwinsBuddy/WienerNetzeSmartmeter/discussions/19)
+[FAQs](https://github.com/donkristo/dkWienerNetzeSmartmeter/discussions)
 
 ## Installation
 
@@ -41,7 +41,7 @@ After successful configuration you can add sensors to your favourite dashboard, 
 <img src="./doc/wnsm6.png" alt="Observe that all your smartmeters got imported" width="500"/>
 
 ### Manual
-See [Example configuration files](https://github.com/DarwinsBuddy/WienerNetzeSmartmeter/blob/main/example/configuration.yaml)
+See [Example configuration files](https://github.com/donkristo/dkWienerNetzeSmartmeter/blob/main/example/configuration.yaml)
 ## Copyright
 
 This integration uses the API of https://www.wienernetze.at/smartmeter

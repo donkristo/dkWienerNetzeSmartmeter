@@ -2,15 +2,15 @@
     "domain": "wnsm",
     "name": "WienerNetzeSmartmeter",
     "codeowners": [
-        "@DarwinsBuddy"
+        "@donkristo"
     ],
     "config_flow": true,
     "dependencies": [
         "recorder"
     ],
-    "documentation": "https://github.com/DarwinsBuddy/WienerNetzeSmartmeter",
+    "documentation": "https://github.com/donkristo/dkWienerNetzeSmartmeter",
     "iot_class": "calculated",
-    "issue_tracker": "https://github.com/DarwinsBuddy/WienerNetzeSmartmeter/issues",
+    "issue_tracker": "https://github.com/donkristo/dkWienerNetzeSmartmeter/issues",
     "requirements": [
         "lxml",
         "requests"
