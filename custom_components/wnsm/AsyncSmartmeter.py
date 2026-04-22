@@ -59,6 +59,14 @@ class AsyncSmartmeter:
             raise RuntimeError(f"Cannot access Zaehlpunkt {zaehlpunkt}")
         return zaehlpunkte
 
+    @staticmethod
+    def _zaehlpunkt_priority(zaehlpunkt: dict) -> tuple[int, int, int]:
+        return (
+            int(bool(zaehlpunkt.get("isActive"))),
+            int(bool(zaehlpunkt.get("isSmartMeterMarketReady"))),
+            int(bool(zaehlpunkt.get("isDefault"))),
+        )
+
     async def get_zaehlpunkt(self, zaehlpunkt: str) -> dict[str, str]:
         """
         asynchronously get and parse /zaehlpunkt response
@@ -69,12 +77,16 @@ class AsyncSmartmeter:
         zp = [z for z in zaehlpunkte if z["zaehlpunktnummer"] == zaehlpunkt]
         if len(zp) == 0:
             raise RuntimeError(f"Zaehlpunkt {zaehlpunkt} not found")
-
-        return (
-            translate_dict(zp[0], ATTRS_ZAEHLPUNKTE_CALL)
-            if len(zp) > 0
-            else None
+        selected_zp = max(zp, key=self._zaehlpunkt_priority)
+        _LOGGER.debug(
+            "Selected WienerNetze zaehlpunkt %s from %s candidates: active=%s smartMeterReady=%s",
+            zaehlpunkt,
+            len(zp),
+            selected_zp.get("isActive"),
+            selected_zp.get("isSmartMeterMarketReady"),
         )
+
+        return translate_dict(selected_zp, ATTRS_ZAEHLPUNKTE_CALL)
 
     async def get_consumption(self, customer_id: str, zaehlpunkt: str, start_date: datetime):
         """Return 24h of hourly consumption starting from a date"""
@@ -121,10 +133,14 @@ class AsyncSmartmeter:
         )
         if "Exception" in response:
             raise RuntimeError(f"Cannot access historic data: {response}")
-        _LOGGER.debug(f"Raw historical data: {response}")
+        _LOGGER.debug("Raw WienerNetze meter reading response for %s from %s to %s: %s", zaehlpunkt, start_date, end_date, response)
         meter_readings = translate_dict(response, ATTRS_HISTORIC_DATA)
-        if "values" in meter_readings and all("messwert" in messwert for messwert in meter_readings['values']) and len(meter_readings['values']) > 0:
-            return meter_readings['values'][0]['messwert'] / 1000
+        for meter_reading in meter_readings.get('values', []):
+            value = meter_reading.get('messwert')
+            if value is not None:
+                return value / 1000
+        _LOGGER.warning("No usable WienerNetze meter reading found for %s from %s to %s", zaehlpunkt, start_date, end_date)
+        return None
 
     @staticmethod
     def is_active(zaehlpunkt_response: dict) -> bool:

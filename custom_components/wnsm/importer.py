@@ -84,13 +84,13 @@ class Importer:
             # XXX: since HA core 2022.12 need to specify this:
             {"sum", "state"},  # the fields we want to query (state might be used in the future)
         )
-        _LOGGER.debug("Last inserted stat: %s" % last_inserted_stat)
+        _LOGGER.debug("WienerNetze statistics import starting for %s; last statistic: %s", self.zaehlpunkt, last_inserted_stat)
         try:
             await self.async_smartmeter.login()
             zaehlpunkt = await (self.async_smartmeter.get_zaehlpunkt(self.zaehlpunkt))
 
             if not self.async_smartmeter.is_active(zaehlpunkt):
-                _LOGGER.debug("Smartmeter %s is not active" % zaehlpunkt)
+                _LOGGER.warning("Skipping WienerNetze statistics import because smartmeter is not active: %s", zaehlpunkt)
                 return
 
             if not self.is_last_inserted_stat_valid(last_inserted_stat):
@@ -100,6 +100,7 @@ class Importer:
             else:
                 start_off_point = self.prepare_start_off_point(last_inserted_stat)
                 if start_off_point is None:
+                    _LOGGER.debug("Skipping WienerNetze statistics import for %s because no start point was prepared", self.zaehlpunkt)
                     return
                 start, _sum = start_off_point
                 _sum = await self._incremental_import_statistics(start, _sum)
@@ -120,11 +121,13 @@ class Importer:
                 True,  # convert the units
                 {"sum"}  # the fields we want to query
             )
-            _LOGGER.debug("Last inserted stat: %s", last_inserted_stat)
+            _LOGGER.debug("WienerNetze statistics import finished for %s; new last statistic: %s", self.zaehlpunkt, last_inserted_stat)
         except TimeoutError as e:
             _LOGGER.warning("Error retrieving data from smart meter api - Timeout: %s" % e)
         except RuntimeError as e:
             _LOGGER.exception("Error retrieving data from smart meter api - Error: %s" % e)
+        except (KeyError, TypeError, ValueError, NotImplementedError) as e:
+            _LOGGER.warning("Skipping smart meter statistics import: %s", e)
 
     def get_statistics_metadata(self):
         return StatisticMetaData(
@@ -143,6 +146,34 @@ class Importer:
     async def _incremental_import_statistics(self, start: datetime, total_usage: Decimal):
         return await self._import_statistics(start=start, total_usage=total_usage)
 
+    @staticmethod
+    def _unit_factor(bewegungsdaten: dict) -> float:
+        unit = bewegungsdaten.get("unitOfMeasurement")
+        if unit is None:
+            _LOGGER.warning("WienerNetze did not report a unit for bewegungsdaten; assuming KWH.")
+            unit = "KWH"
+
+        unit = str(unit).upper()
+        if unit == 'WH':
+            return 1e-3
+        if unit == 'KWH':
+            return 1.0
+        raise NotImplementedError(f"Unit {unit} is not yet implemented. Please report!")
+
+    @staticmethod
+    def _reading_value(value: dict):
+        for key in ("wert", "value"):
+            if value.get(key) is not None:
+                return value[key]
+        return None
+
+    @staticmethod
+    def _reading_timestamp(value: dict):
+        for key in ("zeitpunktVon", "timestamp", "zeitVon"):
+            if value.get(key) is not None:
+                return value[key]
+        return None
+
     async def _import_statistics(self, start: datetime = None, end: datetime = None, total_usage: Decimal = Decimal(0)):
         """Import statistics"""
 
@@ -152,45 +183,46 @@ class Importer:
         if start.tzinfo is None:
             raise ValueError("start datetime must be timezone-aware!")
 
-        _LOGGER.debug("Selecting data up to %s" % end)
+        _LOGGER.debug("Querying WienerNetze bewegungsdaten for %s from %s to %s with granularity %s", self.zaehlpunkt, start, end, self.granularity)
         if start > end:
             _LOGGER.warning(f"Ignoring async update since last import happened in the future (should not happen) {start} > {end}")
             return
 
         bewegungsdaten = await self.async_smartmeter.get_bewegungsdaten(self.zaehlpunkt, start, end, self.granularity)
         _LOGGER.debug(f"Mapped historical data: {bewegungsdaten}")
-        if bewegungsdaten['unitOfMeasurement'] == 'WH':
-            factor = 1e-3
-        elif bewegungsdaten['unitOfMeasurement'] == 'KWH':
-            factor = 1.0
-        else:
-            raise NotImplementedError(f'Unit {bewegungsdaten["unitOfMeasurement"]}" is not yet implemented. Please report!')
+        factor = self._unit_factor(bewegungsdaten)
 
         dates = defaultdict(Decimal)
         if 'values' not in bewegungsdaten:
             raise ValueError("WienerNetze does not report historical data (yet)")
-        total_consumption = sum([v.get("wert", 0) for v in bewegungsdaten['values']])
-        # Can actually check, if the whole batch can be skipped.
-        if total_consumption == 0:
-            _LOGGER.debug(f"Batch of data starting at {start} does not contain any bewegungsdaten. Seems there is nothing to import, yet.")
-            return
+        values = bewegungsdaten['values']
+        _LOGGER.debug("WienerNetze returned %s bewegungsdaten rows for %s from %s to %s", len(values), self.zaehlpunkt, start, end)
 
         last_ts = start
-        for value in bewegungsdaten['values']:
-            ts = dt_util.parse_datetime(value['zeitpunktVon'])
+        for value in values:
+            raw_value = self._reading_value(value)
+            raw_timestamp = self._reading_timestamp(value)
+            if raw_value is None or raw_timestamp is None:
+                _LOGGER.debug("Skipping incomplete bewegungsdaten row: %s", value)
+                continue
+
+            ts = dt_util.parse_datetime(raw_timestamp)
+            if ts is None:
+                _LOGGER.warning("Skipping bewegungsdaten row with invalid timestamp: %s", value)
+                continue
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+
             if ts < last_ts:
                 # This should prevent any issues with ambiguous values though...
                 _LOGGER.warning(f"Timestamp from API ({ts}) is less than previously collected timestamp ({last_ts}), ignoring value!")
                 continue
             last_ts = ts
-            if value['wert'] is None:
-                # Usually this means that the measurement is not yet in the WSTW database.
-                continue
-            reading = Decimal(value['wert'] * factor)
+            reading = Decimal(str(raw_value)) * Decimal(str(factor))
             if ts.minute % 15 != 0 or ts.second != 0 or ts.microsecond != 0:
                 _LOGGER.warning(f"Unexpected time detected in historic data: {value}")
             dates[ts.replace(minute=0)] += reading
-            if value['geschaetzt']:
+            if value.get('geschaetzt', value.get('isEstimated', False)):
                 _LOGGER.debug(f"Not seen that before: Estimated Value found for {ts}: {reading}")
 
         statistics = []
@@ -200,6 +232,9 @@ class Importer:
             total_usage += usage
             statistics.append(StatisticData(start=ts, sum=total_usage, state=float(usage)))
         if len(statistics) > 0:
-            _LOGGER.debug(f"Importing statistics from {statistics[0]} to {statistics[-1]}")
+            _LOGGER.info("Importing %s WienerNetze statistics rows for %s from %s to %s", len(statistics), self.zaehlpunkt, statistics[0], statistics[-1])
+        else:
+            _LOGGER.warning("WienerNetze returned bewegungsdaten for %s, but no usable statistics rows were built", self.zaehlpunkt)
+            return total_usage
         async_add_external_statistics(self.hass, metadata, statistics)
         return total_usage

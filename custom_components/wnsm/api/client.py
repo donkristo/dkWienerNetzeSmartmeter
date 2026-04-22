@@ -320,20 +320,39 @@ class Smartmeter:
 
         return response.json()
 
+    @staticmethod
+    def _zaehlpunkt_priority(zaehlpunkt: dict) -> tuple[int, int, int]:
+        return (
+            int(bool(zaehlpunkt.get("isActive"))),
+            int(bool(zaehlpunkt.get("isSmartMeterMarketReady"))),
+            int(bool(zaehlpunkt.get("isDefault"))),
+        )
+
     def get_zaehlpunkt(self, zaehlpunkt: str = None) -> tuple[str, str, str]:
         contracts = self.zaehlpunkte()
         if zaehlpunkt is None:
-            customer_id = contracts[0]["geschaeftspartner"]
-            zp = contracts[0]["zaehlpunkte"][0]["zaehlpunktnummer"]
-            anlagetype = contracts[0]["zaehlpunkte"][0]["anlage"]["typ"]
+            candidates = [
+                (contract, zp)
+                for contract in contracts
+                for zp in contract.get("zaehlpunkte", [])
+            ]
         else:
-            customer_id = zp = anlagetype = None
-            for contract in contracts:
-                zp_details = [z for z in contract["zaehlpunkte"] if z["zaehlpunktnummer"] == zaehlpunkt]
-                if len(zp_details) > 0:
-                    anlagetype = zp_details[0]["anlage"]["typ"]
-                    zp = zp_details[0]["zaehlpunktnummer"]
-                    customer_id = contract["geschaeftspartner"]
+            candidates = [
+                (contract, zp)
+                for contract in contracts
+                for zp in contract.get("zaehlpunkte", [])
+                if zp.get("zaehlpunktnummer") == zaehlpunkt
+            ]
+        if not candidates:
+            raise SmartmeterQueryError(f"Zaehlpunkt {zaehlpunkt} not found")
+
+        contract, zp_details = max(
+            candidates,
+            key=lambda candidate: self._zaehlpunkt_priority(candidate[1]),
+        )
+        customer_id = contract["geschaeftspartner"]
+        zp = zp_details["zaehlpunktnummer"]
+        anlagetype = zp_details["anlage"]["typ"]
         return customer_id, zp, const.AnlagenType.from_str(anlagetype)
 
     def zaehlpunkte(self):

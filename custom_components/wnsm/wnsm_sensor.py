@@ -83,6 +83,7 @@ class WNSMSensor(SensorEntity):
         update sensor
         """
         try:
+            _LOGGER.debug("Updating WienerNetze smartmeter sensor %s", self.zaehlpunkt)
             smartmeter = Smartmeter(username=self.username, password=self.password)
             async_smartmeter = AsyncSmartmeter(self.hass, smartmeter)
             await async_smartmeter.login()
@@ -94,9 +95,16 @@ class WNSMSensor(SensorEntity):
                 reading_dates = [before(today(), 1), before(today(), 2)]
                 for reading_date in reading_dates:
                     meter_reading = await async_smartmeter.get_meter_reading_from_historic_data(self.zaehlpunkt, reading_date, datetime.now())
-                    self._attr_native_value = meter_reading
+                    _LOGGER.debug("WienerNetze meter reading for %s on %s: %s", self.zaehlpunkt, reading_date.date(), meter_reading)
+                    if meter_reading is not None:
+                        self._attr_native_value = meter_reading
+                        break
+                else:
+                    _LOGGER.warning("No recent WienerNetze meter reading found for %s", self.zaehlpunkt)
                 importer = Importer(self.hass, async_smartmeter, self.zaehlpunkt, self.unit_of_measurement, self.granularity())
                 await importer.async_import()
+            else:
+                _LOGGER.warning("Skipping WienerNetze smartmeter sensor %s because zaehlpunkt is not active: %s", self.zaehlpunkt, zaehlpunkt_response)
             self._available = True
             self._updatets = datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         except TimeoutError as e:

@@ -88,6 +88,9 @@ ATTRS_BEWEGUNGSDATEN = [
     ('descriptor.aggregat', 'aggregator'),
     ('descriptor.granularitaet', 'granularity'),
     ('descriptor.einheit', 'unitOfMeasurement'),
+    ('descriptor.unitOfMeasurement', 'unitOfMeasurement'),
+    ('einheit', 'unitOfMeasurement'),
+    ('unitOfMeasurement', 'unitOfMeasurement'),
     ('values', 'values'),
 ]
 
